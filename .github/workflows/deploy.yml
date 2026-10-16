@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: 22
       - run: npm install --no-audit --no-fund
-      - run: npm run build
+      - run: npm run build -- --base=/fodinha/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
