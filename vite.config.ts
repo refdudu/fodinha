@@ -3,7 +3,8 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
-  base: "/fodinha/",
+  // Vercel usa a raiz. GitHub Pages sobrescreve a base no seu workflow.
+  base: "/",
   plugins: [
     react(),
     VitePWA({
@@ -14,8 +15,8 @@ export default defineConfig({
         short_name: "Fodinha",
         description: "Contador de vidas, palpites e vazas para o truco gaúcho.",
         lang: "pt-BR",
-        start_url: "/fodinha/",
-        scope: "/fodinha/",
+        start_url: "./",
+        scope: "./",
         display: "standalone",
         background_color: "#101318",
         theme_color: "#101318",
