@@ -1,0 +1,3 @@
+# Fodinha
+
+Contador de partidas.
