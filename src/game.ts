@@ -65,7 +65,8 @@ export function activePlayers(game: Game): Player[] {
 }
 
 export function maxCards(game: Game): number {
-  return Math.floor(game.rules.deckSize / activePlayers(game).length);
+  const count = activePlayers(game).length;
+  return count ? Math.floor(game.rules.deckSize / count) : 0;
 }
 
 export function bidOrder(game: Game): Player[] {
