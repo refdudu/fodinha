@@ -144,8 +144,7 @@ function App() {
     return Number.isFinite(n) ? Math.round(n) : fallback;
   }
 
-  const results = game && (game.phase === "summary" || game.phase === "finished") ? handResult(game) : null;
-  const lastWinner = game?.tricks.findLast(id => id !== null);
+  const results = game?.phase === "summary" ? handResult(game) : null;
   const carry = game?.tricks.reduce((count, winner) => winner === null ? count + 1 : 0, 0) ?? 0;
   const totalAssigned = active.reduce((sum, player) => sum + (game?.totals[player.id] ?? 0), 0);
 
