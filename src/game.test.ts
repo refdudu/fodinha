@@ -12,6 +12,12 @@ const bid = (game: ReturnType<typeof fresh>, amounts: number[]) => {
 };
 
 describe("Fodinha", () => {
+  it("rejeita nomes vazios e repetidos sem mudar a ordem da mesa", () => {
+    expect(() => newGame(["Ana", " ", "Cris"], DEFAULT_RULES, 0, "teste")).toThrow("Preencha todos os nomes.");
+    expect(() => newGame(["Ana", "ana"], DEFAULT_RULES, 0, "teste")).toThrow("nomes diferentes");
+    expect(newGame(["Ana", "Beto", "Cris"], DEFAULT_RULES, 1, "teste").dealerId).toBe("p1");
+  });
+
   it("inicia com uma carta, ordem pós-distribuidor e pé por último", () => {
     const game = fresh();
     expect(game.cards).toBe(1);

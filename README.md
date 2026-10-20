@@ -32,7 +32,7 @@ PWA instalável com cache offline após a primeira carga online. No celular, use
 
 ## Publicação
 
-O projeto está configurado para o endereço https://refdudu.github.io/fodinha/ com base /fodinha/.
+O build padrão usa a raiz (compatível com Vercel). O workflow do GitHub Pages usa a base `/fodinha/` para o endereço https://refdudu.github.io/fodinha/.
 
 Depois de o código entrar na branch principal:
 1. Abra Settings → Pages no GitHub.

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   DEFAULT_RULES, activePlayers, advanceHand, amendTrick, bidOrder, closeTotals,
@@ -48,7 +48,8 @@ function Button({ children, onClick, subtle = false, disabled = false, className
 
 function App() {
   const [data, setData] = useState<Stored>(readStorage);
-  const [view, setView] = useState<"home" | "game">(() => readStorage().game?.phase !== "finished" && readStorage().game ? "game" : "home");
+  const dataRef = useRef(data);
+  const [view, setView] = useState<"home" | "game">(() => data.game && data.game.phase !== "finished" ? "game" : "home");
   const [names, setNames] = useState<string[]>(["", "", ""]);
   const [dealerIndex, setDealerIndex] = useState(0);
   const [rules, setRules] = useState<Rules>({ ...DEFAULT_RULES });
@@ -74,24 +75,32 @@ function App() {
     setBidValue(0);
   }, [game?.hand, Object.keys(game?.bids ?? {}).length]);
 
+  // Mantém ações consecutivas sincronizadas, mesmo antes do próximo render do React.
+  function replaceData(next: Stored) {
+    dataRef.current = next;
+    setData(next);
+  }
+
   function update(transform: (current: Game) => Game) {
-    if (!game) return;
+    const previous = dataRef.current;
+    const current = previous.game;
+    if (!current) return;
     try {
-      const next = transform(game);
-      if (next === game) return;
-      const nextHistory: MatchHistory[] = next.phase === "finished" && game.phase !== "finished"
+      const next = transform(current);
+      if (next === current) return;
+      const nextHistory: MatchHistory[] = next.phase === "finished" && current.phase !== "finished"
         ? [{
             id: next.id,
             timestamp: Date.now(),
             names: next.players.map(player => player.name),
             winners: next.players.filter(player => next.winnerIds.includes(player.id)).map(player => player.name),
             hands: next.hand
-          }, ...data.history.filter(match => match.id !== next.id)].slice(0, 30)
-        : data.history;
-      setData(prev => ({
-        ...prev, game: next, history: nextHistory,
-        undo: [...prev.undo, game].slice(-60)
-      }));
+          }, ...previous.history.filter(match => match.id !== next.id)].slice(0, 30)
+        : previous.history;
+      replaceData({
+        ...previous, game: next, history: nextHistory,
+        undo: [...previous.undo, current].slice(-60)
+      });
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível registrar esta ação.");
@@ -99,24 +108,29 @@ function App() {
   }
 
   function undo() {
-    if (!data.undo.length) return;
-    const previous = data.undo[data.undo.length - 1];
-    setData(prev => ({
-      ...prev, game: previous, undo: prev.undo.slice(0, -1),
-      history: prev.game?.phase === "finished" ? prev.history.filter(match => match.id !== prev.game?.id) : prev.history
-    }));
+    const current = dataRef.current;
+    if (!current.undo.length) return;
+    const previous = current.undo[current.undo.length - 1];
+    replaceData({
+      ...current, game: previous, undo: current.undo.slice(0, -1),
+      history: current.game?.phase === "finished"
+        ? current.history.filter(match => match.id !== current.game?.id)
+        : current.history
+    });
     setError("");
   }
 
   function startGame() {
     try {
-      if (game && game.phase !== "finished" && !window.confirm("Substituir a partida atual? O histórico dela não será salvo.")) return;
-      const trimmed = names.map(name => name.trim()).filter(Boolean);
-      const fresh = newGame(trimmed, rules, Math.min(dealerIndex, trimmed.length - 1), String(Date.now()));
-      setData(prev => ({
-        ...prev, game: fresh, undo: [],
-        recentNames: [...new Set([...trimmed, ...prev.recentNames])].slice(0, 80)
-      }));
+      const current = dataRef.current;
+      if (current.game && current.game.phase !== "finished" && !window.confirm("Substituir a partida atual? O histórico dela não será salvo.")) return;
+      // Não descarte campos vazios: newGame deve apontar o erro antes de iniciar.
+      const trimmed = names.map(name => name.trim());
+      const fresh = newGame(trimmed, rules, dealerIndex, String(Date.now()));
+      replaceData({
+        ...current, game: fresh, undo: [],
+        recentNames: [...new Set([...trimmed, ...current.recentNames])].slice(0, 80)
+      });
       setError("");
       setView("game");
     } catch (err) {
@@ -125,8 +139,9 @@ function App() {
   }
 
   function stopGame() {
-    if (game && game.phase !== "finished" && !window.confirm("Descartar a partida em andamento?")) return;
-    setData(prev => ({ ...prev, game: null, undo: [] }));
+    const current = dataRef.current;
+    if (current.game && current.game.phase !== "finished" && !window.confirm("Descartar a partida em andamento?")) return;
+    replaceData({ ...current, game: null, undo: [] });
     setView("home");
     setError("");
   }
@@ -147,6 +162,7 @@ function App() {
   const results = game?.phase === "summary" ? handResult(game) : null;
   const carry = game?.tricks.reduce((count, winner) => winner === null ? count + 1 : 0, 0) ?? 0;
   const totalAssigned = active.reduce((sum, player) => sum + (game?.totals[player.id] ?? 0), 0);
+  const modeLocked = Boolean(game && (game.tricks.length || Object.values(game.totals).some(value => value > 0)));
 
   return (
     <main className="shell">
@@ -187,7 +203,7 @@ function App() {
                 <button className="icon-button" type="button" aria-label="Remover jogador" title="Remover"
                   disabled={names.length <= 2} onClick={() => {
                     setNames(prev => prev.filter((_, i) => i !== index));
-                    setDealerIndex(0);
+                    setDealerIndex(current => current === index ? 0 : current > index ? current - 1 : current);
                   }}>×</button>
               </div>
             ))}
@@ -318,8 +334,10 @@ function App() {
             </div>
             <div className="segmented">
               <button type="button" className={game.mode === "tricks" ? "selected" : ""}
+                disabled={game.mode === "tricks" || modeLocked}
                 onClick={() => update(current => setMode(current, "tricks"))}>Por vaza</button>
               <button type="button" className={game.mode === "totals" ? "selected" : ""}
+                disabled={game.mode === "totals" || modeLocked}
                 onClick={() => update(current => setMode(current, "totals"))}>Por totais</button>
             </div>
             {game.mode === "tricks" ? <>

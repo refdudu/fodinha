@@ -3,7 +3,8 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
-  base: "/fodinha/",
+  // Vercel usa a raiz; o workflow do Pages define /fodinha/ no build.
+  base: "/",
   plugins: [
     react(),
     VitePWA({
@@ -12,10 +13,10 @@ export default defineConfig({
       manifest: {
         name: "Fodinha — Contador",
         short_name: "Fodinha",
-        description: "Contador de vidas, palpites e vazas para o truco gaúcho.",
+        description: "Contador de vidas, palpites e vazas para Fodinha.",
         lang: "pt-BR",
-        start_url: "/fodinha/",
-        scope: "/fodinha/",
+        start_url: "./",
+        scope: "./",
         display: "standalone",
         background_color: "#101318",
         theme_color: "#101318",
